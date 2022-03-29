@@ -1,0 +1,3 @@
+###macOS ###
+*.xcodeproj/
+.DS_Store
