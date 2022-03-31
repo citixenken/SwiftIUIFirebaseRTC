@@ -45,6 +45,7 @@ struct LoginView: View {
                     //.textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
                     .background(.white)
+                    .cornerRadius(10)
                     
                     Button {
                         
@@ -58,6 +59,7 @@ struct LoginView: View {
                             Spacer()
                         }
                         .background(.blue)
+                        .cornerRadius(10)
                         //.padding()
                     }
                 }
