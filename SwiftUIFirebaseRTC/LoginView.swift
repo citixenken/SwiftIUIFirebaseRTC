@@ -6,13 +6,25 @@
 //
 
 import SwiftUI
+import Firebase
 
 struct LoginView: View {
     @State var isLoginMode = false
     @State var email = ""
     @State var password = ""
     
+    //initializing Firebase SDK
+    init() {
+        FirebaseApp.configure()
+    }
     
+    private func handleAction() {
+        if isLoginMode {
+            print("Should login into Firebase with existing credentials.")
+        } else {
+            print("Register a new account inside of Firebase Auth and then store image in storage...")
+        }
+    }
     var body: some View {
         NavigationView {
             ScrollView {
@@ -48,7 +60,7 @@ struct LoginView: View {
                     .cornerRadius(10)
                     
                     Button {
-                        
+                        handleAction()
                     } label: {
                         HStack {
                             Spacer()
