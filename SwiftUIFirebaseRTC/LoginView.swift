@@ -14,9 +14,9 @@ struct LoginView: View {
     @State var password = ""
     
     //initializing Firebase SDK
-    init() {
-        FirebaseApp.configure()
-    }
+//    init() {
+//        FirebaseApp.configure()
+//    }
     
     private func handleAction() {
         if isLoginMode {
@@ -25,7 +25,7 @@ struct LoginView: View {
             print("Register a new account inside of Firebase Auth and then store image in storage...")
         }
     }
-    var body: some View {
+    var body: some View { //opaque return type
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
@@ -78,6 +78,7 @@ struct LoginView: View {
                 .padding()
             }
             .navigationTitle(isLoginMode ? "Log In" : "Create Account")
+            .navigationBarTitleDisplayMode(.inline)
             .background(Color(.init(white: 0, alpha: 0.15))
                             .ignoresSafeArea())
         }
