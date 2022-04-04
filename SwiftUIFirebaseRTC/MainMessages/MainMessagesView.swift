@@ -6,16 +6,71 @@
 //
 
 import SwiftUI
+import SDWebImageSwiftUI
+
+struct ChatUser {
+    let uid, email, profileImageURL: String
+}
+
+class MainMessagesViewModel: ObservableObject {
+    @Published var errorMessage = ""
+    @Published var chatUser: ChatUser?
+    
+    init() {
+        fetchCurrentUser()
+    }
+    
+    private func fetchCurrentUser() {
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else {
+            self.errorMessage = "Could not find Firebase UID"
+            return
+        }
+//        self.errorMessage = "\(uid)"
+        
+        FirebaseManager.shared.firestore.collection("users").document(uid).getDocument { snapshot, error in
+            if let error = error {
+                print("Failed to fetch current user: ", error)
+                return
+            }
+            
+            guard let data = snapshot?.data() else { return }
+//            print(data)
+            
+//            self.errorMessage = "\(data.description)"
+            let uid = data["uid"] as? String ?? ""
+            let email = data["email"] as? String ?? ""
+            let profileImageURL = data["profileImageURL"] as? String ?? ""
+
+            //#"([^@]+)"#
+            self.chatUser = ChatUser(uid: uid, email: email, profileImageURL: profileImageURL)
+            
+//            self.errorMessage = chatUser.uid
+        }
+    }
+}
 
 struct MainMessagesView: View {
     @State private var logOutOptions = false
     
+    @ObservedObject private var viewModel = MainMessagesViewModel()
+    
     private var customNavBar: some View {
         HStack(spacing: 14) {
-            Image(systemName: "person.fill")
-                .font(.system(size: 64, weight: .heavy))
+            
+            WebImage(url: URL(string: viewModel.chatUser?.profileImageURL ?? ""))
+                .resizable()
+                .frame(width: 64, height: 64)
+                .cornerRadius(32)
+                .overlay(RoundedRectangle(cornerRadius: 32)
+                            .stroke(Color(.label), lineWidth: 1))
+                .shadow(radius: 10)
+//            Image(systemName: "person.fill")
+//                .font(.system(size: 16, weight: .heavy))
+            
             VStack(alignment: .leading, spacing: 4) {
-                Text("Username")
+                //find better way of handling this????
+                
+                Text("\(viewModel.chatUser?.email.replacingOccurrences(of: "@jordan.com", with: "") ?? "")")
                     .font(.system(size: 24, weight: .bold))
                 HStack {
                     Circle()
@@ -97,6 +152,8 @@ struct MainMessagesView: View {
     var body: some View {
         NavigationView {
             VStack {
+//                Text("Current User ID: \(viewModel.chatUser?.uid ?? "")")
+                
                 //custom nav bar
                 customNavBar
                 
