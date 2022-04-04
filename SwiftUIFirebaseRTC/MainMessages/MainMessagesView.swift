@@ -68,9 +68,10 @@ struct MainMessagesView: View {
 //                .font(.system(size: 16, weight: .heavy))
             
             VStack(alignment: .leading, spacing: 4) {
-                //find better way of handling this????
+                //find better way of handling this???? -> Found it...Line 74
                 
-                Text("\(viewModel.chatUser?.email.replacingOccurrences(of: "@jordan.com", with: "") ?? "")")
+//                Text("\(viewModel.chatUser?.email.replacingOccurrences(of: "@jordan.com", with: "") ?? "")")
+                Text("\(viewModel.chatUser?.email.split(separator: "@").dropLast().joined() ?? "")")
                     .font(.system(size: 24, weight: .bold))
                 HStack {
                     Circle()
