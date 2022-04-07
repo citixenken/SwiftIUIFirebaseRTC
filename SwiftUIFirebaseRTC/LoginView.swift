@@ -9,13 +9,18 @@ import SwiftUI
 import Firebase
 
 struct LoginView: View {
-    @State var isLoginMode = false
-    @State var email = ""
-    @State var password = ""
+    
+    let didCompleteLoginProcess: () -> ()
+    
+    let didCompleteAccountCreationProcess: () -> ()
+    
+    @State private var isLoginMode = false
+    @State private var email = ""
+    @State private var password = ""
     
     @State private var shouldShowImagePicker = false
     
-    @State var image: UIImage?
+    @State private var image: UIImage?
 
     var body: some View { //opaque return type
         NavigationView {
@@ -111,6 +116,13 @@ struct LoginView: View {
     @State private var loginStatusMessage = ""
     
     private func createNewAccount() {
+        
+        //avatar is REQUIRED during account creation
+        if self.image == nil {
+            self.loginStatusMessage = "You MUST select an avatar image"
+            return
+        }
+        
         FirebaseManager.shared.auth.createUser(withEmail: email, password: password) {
             result, err in
             if let err = err {
@@ -136,6 +148,8 @@ struct LoginView: View {
             }
             print("Successfully logged in as user: \(result?.user.uid ?? "")")
             self.loginStatusMessage = "Successfully logged in as user: \(result?.user.uid ?? "")"
+            
+            self.didCompleteLoginProcess()
         }
     }
     
@@ -181,12 +195,14 @@ struct LoginView: View {
                     return
                 }
                 print("Success")
+                
+                self.didCompleteAccountCreationProcess()
             }
     }
 }
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        LoginView()
+        LoginView(didCompleteLoginProcess: {}, didCompleteAccountCreationProcess: {})
     }
 }

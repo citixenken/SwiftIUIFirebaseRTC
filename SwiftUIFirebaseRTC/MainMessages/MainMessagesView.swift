@@ -8,19 +8,18 @@
 import SwiftUI
 import SDWebImageSwiftUI
 
-struct ChatUser {
-    let uid, email, profileImageURL: String
-}
-
 class MainMessagesViewModel: ObservableObject {
     @Published var errorMessage = ""
     @Published var chatUser: ChatUser?
     
     init() {
+        DispatchQueue.main.async {
+            self.isUserCurrentlyLoggedOut = FirebaseManager.shared.auth.currentUser?.uid == nil
+        }
         fetchCurrentUser()
     }
     
-    private func fetchCurrentUser() {
+    func fetchCurrentUser() {
         guard let uid = FirebaseManager.shared.auth.currentUser?.uid else {
             self.errorMessage = "Could not find Firebase UID"
             return
@@ -34,18 +33,28 @@ class MainMessagesViewModel: ObservableObject {
             }
             
             guard let data = snapshot?.data() else { return }
+            
+            self.chatUser = .init(data: data)
+
 //            print(data)
             
 //            self.errorMessage = "\(data.description)"
-            let uid = data["uid"] as? String ?? ""
-            let email = data["email"] as? String ?? ""
-            let profileImageURL = data["profileImageURL"] as? String ?? ""
-
+//            let uid = data["uid"] as? String ?? ""
+//            let email = data["email"] as? String ?? ""
+//            let profileImageURL = data["profileImageURL"] as? String ?? ""
+            
             //#"([^@]+)"#
-            self.chatUser = ChatUser(uid: uid, email: email, profileImageURL: profileImageURL)
+//            self.chatUser = ChatUser(uid: uid, email: email, profileImageURL: profileImageURL)
             
 //            self.errorMessage = chatUser.uid
         }
+    }
+    
+    @Published var isUserCurrentlyLoggedOut = false
+    
+    func handleSignOut() {
+        isUserCurrentlyLoggedOut.toggle()
+        try? FirebaseManager.shared.auth.signOut()
     }
 }
 
@@ -94,8 +103,20 @@ struct MainMessagesView: View {
         }
         .padding()
         .actionSheet(isPresented: $logOutOptions) {
-            .init(title: Text("What do you want to do?"), buttons: [.destructive(Text("Sign Out")),
-                                                                    .cancel()])
+            .init(title: Text("What do you want to do?"), buttons: [.destructive(Text("Sign Out"), action: {
+                viewModel.handleSignOut()
+            }),
+            .cancel()])
+        }
+        .fullScreenCover(isPresented: $viewModel.isUserCurrentlyLoggedOut, onDismiss: nil) {
+            LoginView(didCompleteLoginProcess: {
+                self.viewModel.isUserCurrentlyLoggedOut = false
+                self.viewModel.fetchCurrentUser()
+            },
+                      didCompleteAccountCreationProcess: {
+                self.viewModel.isUserCurrentlyLoggedOut = false
+                self.viewModel.fetchCurrentUser()
+            })
         }
     }
     
@@ -177,6 +198,6 @@ struct MainMessages_Previews: PreviewProvider {
         MainMessagesView()
             .preferredColorScheme(.dark)
         
-        MainMessagesView()
+       // MainMessagesView()
     }
 }
