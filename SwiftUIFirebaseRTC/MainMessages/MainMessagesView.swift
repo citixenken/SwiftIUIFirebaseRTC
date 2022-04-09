@@ -61,6 +61,8 @@ class MainMessagesViewModel: ObservableObject {
 struct MainMessagesView: View {
     @State private var logOutOptions = false
     
+    @State var shouldNavigateToChatLogView = false
+    
     @ObservedObject private var viewModel = MainMessagesViewModel()
     
     private var customNavBar: some View {
@@ -124,24 +126,29 @@ struct MainMessagesView: View {
         ScrollView {
             ForEach(0..<10, id: \.self) { row in
                 VStack {
-                    HStack(spacing: 16) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 32))
-                            .padding(8
-                            )
-                            .overlay(RoundedRectangle(cornerRadius: 32)
-                                        .stroke(Color(.label), lineWidth: 1))
-                        VStack(alignment: .leading) {
-                            Text("Username \(row)")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Message sent to user")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
+                    NavigationLink {
+                        Text("Destination")
                         
-                        Text("69d")
-                            .font(.system(size: 14, weight: .semibold))
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 32))
+                                .padding(8
+                                )
+                                .overlay(RoundedRectangle(cornerRadius: 32)
+                                            .stroke(Color(.label), lineWidth: 1))
+                            VStack(alignment: .leading) {
+                                Text("Username \(row)")
+                                    .font(.system(size: 16, weight: .bold))
+                                Text("Message sent to user")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            
+                            Text("69d")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
                     }
                     Divider()
                         .padding(.vertical, 8)
@@ -173,9 +180,15 @@ struct MainMessagesView: View {
             .shadow(radius: 20)
         }
         .fullScreenCover(isPresented: $showNewMessageScreen) {
-            NewMessageView()
+            NewMessageView(didSelectNewUser: { user in
+                print(user.email)
+                self.shouldNavigateToChatLogView.toggle()
+                self.chatUser = user
+            })
         }
     }
+    
+    @State var chatUser: ChatUser?
     
     var body: some View {
         NavigationView {
@@ -190,6 +203,10 @@ struct MainMessagesView: View {
                     
                 //                .navigationTitle("Main Message View")
                 //                .navigationBarTitleDisplayMode(.inline)
+                
+                NavigationLink("", isActive: $shouldNavigateToChatLogView) {
+                    ChatLogView(chatUser: self.chatUser)
+                }
             }
             .navigationBarHidden(true)
             
@@ -199,7 +216,22 @@ struct MainMessagesView: View {
     }
 }
 
-struct MainMessages_Previews: PreviewProvider {
+struct ChatLogView: View {
+     
+    let chatUser: ChatUser?
+    
+    var body: some View {
+        ScrollView {
+            ForEach(0..<5) { num in
+                Text("Placeholder message")
+            }
+        }
+        .navigationTitle(chatUser?.email ?? "")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct MainMessagesView_Previews: PreviewProvider {
     static var previews: some View {
         MainMessagesView()
             .preferredColorScheme(.dark)
