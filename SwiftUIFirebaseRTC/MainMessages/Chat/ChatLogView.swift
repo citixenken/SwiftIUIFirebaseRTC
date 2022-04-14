@@ -13,10 +13,49 @@ class ChatLogViewModel: ObservableObject {
     @Published var chatText = ""
     @Published var errorMessage = ""
     
+    @Published var chatMessages = [ChatMessage]()
+    
     let chatUser: ChatUser?
     
     init(chatUser: ChatUser?) {
         self.chatUser = chatUser
+        
+        fetchMessages()
+    }
+    
+    //fetch messages from Firestore
+    private func fetchMessages() {
+        guard let fromID = FirebaseManager.shared.auth.currentUser?.uid else {
+            return
+        }
+        guard let toID = chatUser?.uid else {
+            return
+        }
+        FirebaseManager.shared.firestore
+            .collection("messages")
+            .document(fromID)
+            .collection(toID)
+            .order(by: "timestamp")
+            .addSnapshotListener { querySnapshot, error in
+                if let error = error {
+                    self.errorMessage = "Failed to listen for messages: \(error)"
+                    print(error)
+                    return
+                }
+                
+                //avoids message duplication
+                querySnapshot?.documentChanges.forEach( { change in
+                    if change.type == .added {
+                        let data = change.document.data()
+                        self.chatMessages.append(.init(documentID: change.document.documentID, data: data))
+                    }
+                })
+//                querySnapshot?.documents.forEach({ queryDocumentSnapshot in
+//                    let data = queryDocumentSnapshot.data()
+//                    let docID = queryDocumentSnapshot.documentID
+//                    self.chatMessages.append(.init(documentID: docID, data: data))
+//                })
+            }
     }
     
     func handleSend() {
@@ -35,7 +74,7 @@ class ChatLogViewModel: ObservableObject {
             .collection(toID)
             .document()
         
-        let messageData = ["fromID" : fromID, "toID" : toID, "text" : self.chatText, "timestamp" : Timestamp()] as [String : Any]
+        let messageData = [FirebaseConstants.fromID : fromID, FirebaseConstants.toID : toID, FirebaseConstants.text : self.chatText, "timestamp" : Timestamp()] as [String : Any]
         
         
         document.setData(messageData) { error in
@@ -65,6 +104,28 @@ class ChatLogViewModel: ObservableObject {
         }
     }
 }
+
+//constants struct
+struct FirebaseConstants {
+    static let fromID = "fromID"
+    static let toID = "toID"
+    static let text = "text"
+}
+
+struct ChatMessage: Identifiable {
+    var id: String { documentID }
+    
+    let documentID: String
+    let fromID, toID, text: String
+    
+    init(documentID: String, data: [String: Any]) {
+        self.documentID = documentID
+        self.fromID = data[FirebaseConstants.fromID] as? String ?? ""
+        self.toID = data[FirebaseConstants.toID] as? String ?? ""
+        self.text = data[FirebaseConstants.text] as? String ?? ""
+
+    }
+}
  
 struct ChatLogView: View {
     @ObservedObject var vm: ChatLogViewModel
@@ -91,16 +152,32 @@ struct ChatLogView: View {
     
     private var messagesView: some View {
         ScrollView {
-            ForEach(0..<16) { num in
-                HStack {
-                    Spacer()
-                    HStack {
-                        Text("Placeholder message")
-                            .foregroundColor(.white)
+            ForEach(vm.chatMessages) { message in
+                VStack {
+                    if message.fromID == FirebaseManager.shared.auth.currentUser?.uid {
+                        HStack {
+                            Spacer()
+                            HStack {
+                                Text(message.text)
+                                    .foregroundColor(.white)
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                        }
+                    } else {
+                        HStack {
+                            HStack {
+                                Text(message.text)
+                                    .foregroundColor(.white)
+                            }
+                            .padding()
+                            .background(Color.mint)
+                            .cornerRadius(12)
+                            
+                            Spacer()
+                        }
                     }
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
                 }
                 .padding([.horizontal, .top])
             }
