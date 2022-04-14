@@ -50,11 +50,15 @@ class ChatLogViewModel: ObservableObject {
                         self.chatMessages.append(.init(documentID: change.document.documentID, data: data))
                     }
                 })
-//                querySnapshot?.documents.forEach({ queryDocumentSnapshot in
-//                    let data = queryDocumentSnapshot.data()
-//                    let docID = queryDocumentSnapshot.documentID
-//                    self.chatMessages.append(.init(documentID: docID, data: data))
-//                })
+                
+                DispatchQueue.main.async {
+                    self.count += 1
+                }
+                //                querySnapshot?.documents.forEach({ queryDocumentSnapshot in
+                //                    let data = queryDocumentSnapshot.data()
+                //                    let docID = queryDocumentSnapshot.documentID
+                //                    self.chatMessages.append(.init(documentID: docID, data: data))
+                //                })
             }
     }
     
@@ -82,9 +86,10 @@ class ChatLogViewModel: ObservableObject {
                 self.errorMessage = "Failed to save the text into Firestore: \(error)"
                 return
             }
-//            print("Successfully saved message sent")
+            //            print("Successfully saved message sent")
             //clear chat field after saving
             self.chatText = ""
+            self.count += 1
         }
         
         //for the recepient
@@ -103,6 +108,7 @@ class ChatLogViewModel: ObservableObject {
             //print("Successfully saved message received")
         }
     }
+    @Published var count = 0
 }
 
 //constants struct
@@ -123,10 +129,10 @@ struct ChatMessage: Identifiable {
         self.fromID = data[FirebaseConstants.fromID] as? String ?? ""
         self.toID = data[FirebaseConstants.toID] as? String ?? ""
         self.text = data[FirebaseConstants.text] as? String ?? ""
-
+        
     }
 }
- 
+
 struct ChatLogView: View {
     @ObservedObject var vm: ChatLogViewModel
     
@@ -150,39 +156,26 @@ struct ChatLogView: View {
         }
     }
     
+    static let emptyScrollToString = "Empty"
+    
     private var messagesView: some View {
         ScrollView {
-            ForEach(vm.chatMessages) { message in
+            ScrollViewReader { scrollViewProxy in
                 VStack {
-                    if message.fromID == FirebaseManager.shared.auth.currentUser?.uid {
-                        HStack {
-                            Spacer()
-                            HStack {
-                                Text(message.text)
-                                    .foregroundColor(.white)
-                            }
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                        }
-                    } else {
-                        HStack {
-                            HStack {
-                                Text(message.text)
-                                    .foregroundColor(.white)
-                            }
-                            .padding()
-                            .background(Color.mint)
-                            .cornerRadius(12)
-                            
-                            Spacer()
-                        }
+                    ForEach(vm.chatMessages) { message in
+                        MessageView(message: message)
                     }
                 }
-                .padding([.horizontal, .top])
-            }
-            HStack {
-                Spacer()
+                .onReceive(vm.$count) { _ in
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        scrollViewProxy.scrollTo(Self.emptyScrollToString, anchor: .bottom )
+                    }
+                }
+                HStack {
+                    Spacer()
+                }
+                .id(Self.emptyScrollToString)
+                
             }
         }
         .padding(.bottom, 80)
@@ -190,6 +183,11 @@ struct ChatLogView: View {
         .background(Color(.init(white: 0.85, alpha: 1)))
         .navigationTitle(chatUser?.email ?? "")
         .navigationBarTitleDisplayMode(.inline)
+//        .navigationBarItems(trailing: Button(action: {
+//            vm.count += 1
+//        }, label: {
+//            Text("Count: \(vm.count)")
+//        }) )
     }
     
     private var bottomChatView: some View {
@@ -197,13 +195,13 @@ struct ChatLogView: View {
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.title)
                 .foregroundColor(Color(.darkGray))
-//            TextField("Message description", text: $chatText)
+            //            TextField("Message description", text: $chatText)
             
             //unfinished solution?
             //DescriptionPlaceholder()
             
             ZStack {
-//                DescriptionPlaceholder()
+                //                DescriptionPlaceholder()
                 TextEditor(text: $vm.chatText)
                     .opacity(vm.chatText.isEmpty ? 0.5 : 1)
             }
@@ -220,6 +218,42 @@ struct ChatLogView: View {
             .cornerRadius(12)
         }
         .padding()
+    }
+    
+}
+
+struct MessageView: View {
+    
+    let message: ChatMessage
+    
+    var body: some View {
+        VStack {
+            if message.fromID == FirebaseManager.shared.auth.currentUser?.uid {
+                HStack {
+                    Spacer()
+                    HStack {
+                        Text(message.text)
+                            .foregroundColor(.white)
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+            } else {
+                HStack {
+                    HStack {
+                        Text(message.text)
+                            .foregroundColor(.white)
+                    }
+                    .padding()
+                    .background(Color.mint)
+                    .cornerRadius(12)
+                    
+                    Spacer()
+                }
+            }
+        }
+        .padding([.horizontal, .top])
     }
     
 }
