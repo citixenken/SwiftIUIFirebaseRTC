@@ -8,6 +8,7 @@
 import SwiftUI
 import SDWebImageSwiftUI
 import Firebase
+import FirebaseFirestoreSwift
 
 class MainMessagesViewModel: ObservableObject {
     @Published var errorMessage = ""
@@ -73,11 +74,21 @@ class MainMessagesViewModel: ObservableObject {
                     let docID = change.document.documentID
                     
                     if let index = self.recentMessages.firstIndex(where: { rm in
-                        return rm.documentID == docID
+                        return rm.id == docID
                     }) {
                         self.recentMessages.remove(at: index)
                     }
-                    self.recentMessages.insert(.init(documentID: docID, data: change.document.data()), at: 0)
+                    
+                    do {
+                        if let rm = try? change.document.data(as: RecentMessage.self) {
+                            self.recentMessages.insert(rm, at: 0)
+                        }
+                    } catch {
+                        print(error)
+                    }
+                    
+                    
+                    //self.recentMessages.insert(.init(documentID: docID, data: change.document.data()), at: 0)
 
                     //self.recentMessages.append(.init(documentID: docID, data: change.document.data()))
                 })
@@ -89,26 +100,6 @@ class MainMessagesViewModel: ObservableObject {
     func handleSignOut() {
         isUserCurrentlyLoggedOut.toggle()
         try? FirebaseManager.shared.auth.signOut()
-    }
-}
-
-struct RecentMessage: Identifiable {
-    var id: String { documentID }
-    
-    let documentID: String
-    let text, email: String
-    let fromID, toID: String
-    let profileImageURL: String
-    let timestamp: Timestamp
-    
-    init(documentID: String, data: [String : Any]) {
-        self.documentID = documentID
-        self.text = data["text"] as? String ?? ""
-        self.fromID = data["fromID"] as? String ?? ""
-        self.toID = data["toID"] as? String ?? ""
-        self.profileImageURL = data["profileImageURL"] as? String ?? ""
-        self.email = data["email"] as? String ?? ""
-        self.timestamp = data["timestamp"] as? Timestamp ?? Timestamp(date: Date())
     }
 }
 
@@ -202,7 +193,7 @@ struct MainMessagesView: View {
                             }
                             Spacer()
                             
-                            Text("69d")
+                            Text(recentMessage.timestamp.description)
                                 .font(.system(size: 14, weight: .semibold))
                         }
                     }

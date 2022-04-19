@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Firebase
+import FirebaseFirestoreSwift
 
 class ChatLogViewModel: ObservableObject {
     
@@ -79,13 +80,24 @@ class ChatLogViewModel: ObservableObject {
             .document()
         
         let messageData = [FirebaseConstants.fromID : fromID, FirebaseConstants.toID : toID, FirebaseConstants.text : self.chatText, "timestamp" : Timestamp()] as [String : Any]
-        
-        
+
+
         document.setData(messageData) { error in
             if let error = error {
                 self.errorMessage = "Failed to save the text into Firestore: \(error)"
                 return
             }
+        
+//        let msg = ChatMessage(id: nil, fromID: fromID, toID: toID, text: chatText, timestamp: Date())
+//
+//        try? document.setData(from: msg) { error in
+//            if let error = error {
+//                print(error)
+//                self.errorMessage = "Failed to save message into Firestore: \(error)"
+//                return
+//            }
+//            print("Successfully saved current user sending message")
+//        }
             //            print("Successfully saved message sent")
             //clear chat field after saving
             
@@ -159,16 +171,18 @@ struct FirebaseConstants {
 
 struct ChatMessage: Identifiable {
     var id: String { documentID }
-    
+
     let documentID: String
-    let fromID, toID, text: String
+    //@DocumentID var id: String?
     
+    let fromID, toID, text: String
+//    let timestamp: Date
     init(documentID: String, data: [String: Any]) {
         self.documentID = documentID
         self.fromID = data[FirebaseConstants.fromID] as? String ?? ""
         self.toID = data[FirebaseConstants.toID] as? String ?? ""
         self.text = data[FirebaseConstants.text] as? String ?? ""
-        
+
     }
 }
 
