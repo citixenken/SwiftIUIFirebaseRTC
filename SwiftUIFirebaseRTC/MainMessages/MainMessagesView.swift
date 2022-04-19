@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SDWebImageSwiftUI
+import Firebase
 
 class MainMessagesViewModel: ObservableObject {
     @Published var errorMessage = ""
@@ -17,6 +18,7 @@ class MainMessagesViewModel: ObservableObject {
             self.isUserCurrentlyLoggedOut = FirebaseManager.shared.auth.currentUser?.uid == nil
         }
         fetchCurrentUser()
+        fetchRecentMessages()
     }
     
     func fetchCurrentUser() {
@@ -50,11 +52,63 @@ class MainMessagesViewModel: ObservableObject {
         }
     }
     
+    @Published var recentMessages = [RecentMessage]()
+    
+    private func fetchRecentMessages() {
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
+        
+        FirebaseManager.shared.firestore
+            .collection("recent_messages")
+            .document(uid)
+            .collection("messages")
+            .order(by: "timestamp")
+            .addSnapshotListener { querySnapshot, error in
+                if let error = error {
+                    self.errorMessage = "Failed to listen to recent messages: \(error)"
+                    print(error)
+                    return
+                }
+                
+                querySnapshot?.documentChanges.forEach({ change in
+                    let docID = change.document.documentID
+                    
+                    if let index = self.recentMessages.firstIndex(where: { rm in
+                        return rm.documentID == docID
+                    }) {
+                        self.recentMessages.remove(at: index)
+                    }
+                    self.recentMessages.insert(.init(documentID: docID, data: change.document.data()), at: 0)
+
+                    //self.recentMessages.append(.init(documentID: docID, data: change.document.data()))
+                })
+            }
+    }
+    
     @Published var isUserCurrentlyLoggedOut = false
     
     func handleSignOut() {
         isUserCurrentlyLoggedOut.toggle()
         try? FirebaseManager.shared.auth.signOut()
+    }
+}
+
+struct RecentMessage: Identifiable {
+    var id: String { documentID }
+    
+    let documentID: String
+    let text, email: String
+    let fromID, toID: String
+    let profileImageURL: String
+    let timestamp: Timestamp
+    
+    init(documentID: String, data: [String : Any]) {
+        self.documentID = documentID
+        self.text = data["text"] as? String ?? ""
+        self.fromID = data["fromID"] as? String ?? ""
+        self.toID = data["toID"] as? String ?? ""
+        self.profileImageURL = data["profileImageURL"] as? String ?? ""
+        self.email = data["email"] as? String ?? ""
+        self.timestamp = data["timestamp"] as? Timestamp ?? Timestamp(date: Date())
     }
 }
 
@@ -124,25 +178,27 @@ struct MainMessagesView: View {
     
     private var messagesView: some View {
         ScrollView {
-            ForEach(0..<10, id: \.self) { row in
+            ForEach(viewModel.recentMessages) { recentMessage in
                 VStack {
                     NavigationLink {
                         Text("Destination")
                         
                     } label: {
                         HStack(spacing: 16) {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 32))
-                                .padding(8
-                                )
+                            WebImage(url: URL(string: recentMessage.profileImageURL))
+                                .resizable()
+                                .frame(width: 64, height: 64)
+                                .cornerRadius(32)
+                                .shadow(radius: 10)
                                 .overlay(RoundedRectangle(cornerRadius: 32)
                                             .stroke(Color(.label), lineWidth: 1))
-                            VStack(alignment: .leading) {
-                                Text("Username \(row)")
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(recentMessage.email)
                                     .font(.system(size: 16, weight: .bold))
-                                Text("Message sent to user")
+                                Text(recentMessage.text)
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
                             }
                             Spacer()
                             
